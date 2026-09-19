@@ -6,11 +6,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { deleteEntry, getEntry, listSpendEvents } from '../db/repository';
+import { deleteEntry, getEntry, listSpendEvents, recordSpend } from '../db/repository';
 import type { BalanceEntry, SpendEvent } from '../models/types';
 import { formatMoney } from '../components/format';
 import { formatExpiryDate } from '../components/expiry';
@@ -28,12 +29,23 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
+function parseMajorToCents(raw: string): number | null {
+  const cleaned = raw.trim().replace(',', '.');
+  if (!cleaned) return null;
+  const n = Number(cleaned);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100);
+}
+
 export function DetailScreen({ navigation, route }: Props) {
   const { entryId } = route.params;
   const [entry, setEntry] = useState<BalanceEntry | null>(null);
   const [history, setHistory] = useState<SpendEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [spending, setSpending] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -75,6 +87,60 @@ export function DetailScreen({ navigation, route }: Props) {
         ) : null,
     });
   }, [navigation, entry, entryId]);
+
+  const applySpend = async (override: boolean, cents: number) => {
+    setSpending(true);
+    try {
+      await recordSpend({
+        entryId,
+        amountCents: cents,
+        override,
+        note: note.trim() || null,
+      });
+      setAmount('');
+      setNote('');
+      await load();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '';
+      if (msg === 'NEGATIVE_BALANCE_REQUIRES_OVERRIDE') {
+        Alert.alert(t('overspendTitle'), t('overspendBody'), [
+          { text: t('cancel'), style: 'cancel' },
+          {
+            text: t('recordOverspend'),
+            onPress: () => {
+              void applySpend(true, cents);
+            },
+          },
+        ]);
+      } else {
+        Alert.alert(t('dbError'));
+      }
+    } finally {
+      setSpending(false);
+    }
+  };
+
+  const onSpend = () => {
+    const cents = parseMajorToCents(amount);
+    if (cents === null) {
+      Alert.alert(t('spendInvalid'));
+      return;
+    }
+    if (!entry) return;
+    if (entry.balanceCents - cents < 0) {
+      Alert.alert(t('overspendTitle'), t('overspendBody'), [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('recordOverspend'),
+          onPress: () => {
+            void applySpend(true, cents);
+          },
+        },
+      ]);
+      return;
+    }
+    void applySpend(false, cents);
+  };
 
   const onDelete = () => {
     Alert.alert(t('deleteConfirmTitle'), t('deleteConfirmBody'), [
@@ -128,7 +194,11 @@ export function DetailScreen({ navigation, route }: Props) {
   const expiryDisplay = formatExpiryDate(entry.expiryAt) ?? t('none');
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text
         style={[styles.balance, negative && styles.balanceNeg]}
         accessibilityLabel={`${t('balance')} ${formatMoney(entry.balanceCents, entry.currency)}`}
@@ -143,6 +213,40 @@ export function DetailScreen({ navigation, route }: Props) {
         <Field label={t('expiry')} value={expiryDisplay} />
         <Field label={t('accepting')} value={accepting} />
         <Field label={t('codeNote')} value={entry.codeNote ?? t('none')} />
+      </View>
+
+      <View style={styles.spendCard}>
+        <Text style={styles.section}>{t('spend')}</Text>
+        <Text style={styles.label}>{t('spendAmount')}</Text>
+        <TextInput
+          style={styles.input}
+          value={amount}
+          onChangeText={setAmount}
+          placeholder={t('spendPlaceholder')}
+          keyboardType="decimal-pad"
+          accessibilityLabel={t('spendAmount')}
+        />
+        <Text style={styles.label}>{t('spendNote')}</Text>
+        <TextInput
+          style={styles.input}
+          value={note}
+          onChangeText={setNote}
+          placeholder={t('spendNotePlaceholder')}
+          accessibilityLabel={t('spendNote')}
+        />
+        <Pressable
+          style={[styles.spendBtn, spending && styles.spendDisabled]}
+          disabled={spending}
+          onPress={onSpend}
+          accessibilityRole="button"
+          accessibilityLabel={t('spend')}
+        >
+          {spending ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.spendBtnText}>{t('spend')}</Text>
+          )}
+        </Pressable>
       </View>
 
       <Text style={styles.section}>{t('history')}</Text>
@@ -195,10 +299,38 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 8,
   },
+  spendCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    gap: 6,
+    marginBottom: 8,
+  },
   field: { gap: 2 },
   label: { fontSize: 12, color: '#6b7280' },
   value: { fontSize: 15, color: '#111827' },
-  section: { marginTop: 8, fontSize: 16, fontWeight: '700', color: '#111827' },
+  input: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    minHeight: 44,
+    marginBottom: 4,
+  },
+  section: { marginTop: 4, fontSize: 16, fontWeight: '700', color: '#111827' },
+  spendBtn: {
+    marginTop: 8,
+    backgroundColor: '#111827',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  spendDisabled: { opacity: 0.5 },
+  spendBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   event: { backgroundColor: '#fff', borderRadius: 10, padding: 12, gap: 2 },
   eventAmount: { fontSize: 15, fontWeight: '600', color: '#111827' },
   muted: { fontSize: 13, color: '#6b7280' },
