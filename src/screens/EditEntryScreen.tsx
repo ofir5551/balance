@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
   I18nManager,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import DateTimePicker, {
   type DateTimePickerChangeEvent,
 } from '@react-native-community/datetimepicker';
@@ -195,18 +194,14 @@ export function EditEntryScreen({ navigation, route }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAwareScrollView
       style={styles.flex}
-      // Android: softwareKeyboardLayoutMode=resize already shrinks the window;
-      // KAV behavior=height fights that. iOS still needs padding.
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="none"
+      // Scroll lower fields (balance, code/note, accepting) into view above keyboard.
+      bottomOffset={48}
     >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="none"
-      >
         <Text style={[styles.label, rtl && styles.textRtl]}>{t('type')}</Text>
         <View style={[styles.chips, rtl && styles.chipsRtl]}>
           {TYPES.map((tp) => (
@@ -373,8 +368,7 @@ export function EditEntryScreen({ navigation, route }: Props) {
             <Text style={styles.saveText}>{t('save')}</Text>
           )}
         </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }
 
