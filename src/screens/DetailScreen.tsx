@@ -2,16 +2,14 @@ import { useCallback, useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
   I18nManager,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { deleteEntry, getEntry, listSpendEvents, recordSpend } from '../db/repository';
@@ -212,18 +210,13 @@ export function DetailScreen({ navigation, route }: Props) {
   const expiryDisplay = formatExpiryDate(entry.expiryAt) ?? t('none');
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      // Android: softwareKeyboardLayoutMode=resize already shrinks the window;
-      // KAV behavior=height fights that. iOS still needs padding.
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
-    >
-    <ScrollView
+    <KeyboardAwareScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="none"
+      // Keep focused field (spend amount/note) + nearby Spend button above keyboard.
+      bottomOffset={48}
     >
       <Text
         style={[styles.balance, negative && styles.balanceNeg, rtl && styles.textRtl]}
@@ -301,8 +294,7 @@ export function DetailScreen({ navigation, route }: Props) {
       >
         <Text style={styles.deleteText}>{t('delete')}</Text>
       </Pressable>
-    </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 }
 
