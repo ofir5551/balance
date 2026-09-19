@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listEntries } from '../db/repository';
 import type { BalanceEntry } from '../models/types';
 import { formatMoney } from '../components/format';
@@ -20,11 +21,15 @@ import type { RootStackParamList } from './types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
+const FAB_SIZE = 56;
+const FAB_MARGIN = 16;
+
 export function HomeScreen({ navigation }: Props) {
   const [entries, setEntries] = useState<BalanceEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const rtl = isRtl() || I18nManager.isRTL;
+  const insets = useSafeAreaInsets();
 
   const load = useCallback(async () => {
     setError(null);
@@ -45,21 +50,37 @@ export function HomeScreen({ navigation }: Props) {
     }, [load]),
   );
 
+  // FAB is the sole create CTA — clear any header Add.
   useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <Pressable
-          onPress={() => navigation.navigate('EditEntry', {})}
-          accessibilityRole="button"
-          accessibilityLabel={t('add')}
-          hitSlop={8}
-          style={styles.headerBtn}
-        >
-          <Text style={styles.headerBtnText}>{t('add')}</Text>
-        </Pressable>
-      ),
-    });
+    navigation.setOptions({ headerRight: undefined });
   }, [navigation]);
+
+  const openCreate = useCallback(() => {
+    navigation.navigate('EditEntry', {});
+  }, [navigation]);
+
+  const fabStyle = [
+    styles.fab,
+    {
+      bottom: FAB_MARGIN + insets.bottom,
+      ...(rtl
+        ? { left: FAB_MARGIN + insets.left }
+        : { right: FAB_MARGIN + insets.right }),
+    },
+  ];
+
+  const fab = (
+    <Pressable
+      style={fabStyle}
+      onPress={openCreate}
+      accessibilityRole="button"
+      accessibilityLabel={t('addEntry')}
+    >
+      <Text style={styles.fabPlus} accessible={false}>
+        +
+      </Text>
+    </Pressable>
+  );
 
   if (loading && entries.length === 0 && !error) {
     return (
@@ -89,65 +110,75 @@ export function HomeScreen({ navigation }: Props) {
     );
   }
 
-  return (
-    <FlatList
-      style={styles.list}
-      contentContainerStyle={entries.length === 0 ? styles.centered : styles.content}
-      data={entries}
-      keyExtractor={(item) => item.id}
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
-      ListEmptyComponent={
-        <View style={styles.centered}>
-          <Text style={styles.empty}>{t('empty')}</Text>
-          <Text style={styles.muted}>{t('emptyHint')}</Text>
-        </View>
-      }
-      renderItem={({ item }) => {
-        const negative = item.balanceCents < 0;
-        const status = expiryStatus(item.expiryAt);
-        const expired = status === 'expired';
-        const soon = status === 'soon';
-        const expiryLabel = formatExpiryDate(item.expiryAt);
-        const a11y = `${item.merchant}, ${formatMoney(item.balanceCents, item.currency)}`;
+  const listBottomPad = FAB_SIZE + FAB_MARGIN * 2 + insets.bottom;
 
-        return (
-          <Pressable
-            style={[styles.row, rtl && styles.rowRtl, expired && styles.rowMuted]}
-            onPress={() => navigation.navigate('Detail', { entryId: item.id })}
-            accessibilityRole="button"
-            accessibilityLabel={a11y}
-          >
-            <View style={styles.rowText}>
-              <Text style={[styles.merchant, expired && styles.mutedText]} numberOfLines={1}>
-                {item.merchant}
-              </Text>
-              <Text style={[styles.meta, expired && styles.mutedText]}>
-                {t(`types.${item.type}`)}
-              </Text>
-              {soon && expiryLabel ? (
-                <Text style={styles.soonCue}>
-                  {t('expiresOn', { date: expiryLabel })}
-                </Text>
-              ) : null}
-              {expired ? <Text style={styles.expiredCue}>{t('expired')}</Text> : null}
-            </View>
-            <Text
-              style={[
-                styles.balance,
-                negative && styles.balanceNeg,
-                expired && styles.mutedText,
-              ]}
+  return (
+    <View style={styles.container}>
+      <FlatList
+        style={styles.list}
+        contentContainerStyle={
+          entries.length === 0
+            ? styles.centered
+            : [styles.content, { paddingBottom: listBottomPad }]
+        }
+        data={entries}
+        keyExtractor={(item) => item.id}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+        ListEmptyComponent={
+          <View style={styles.centered}>
+            <Text style={styles.empty}>{t('empty')}</Text>
+            <Text style={styles.muted}>{t('emptyHint')}</Text>
+          </View>
+        }
+        renderItem={({ item }) => {
+          const negative = item.balanceCents < 0;
+          const status = expiryStatus(item.expiryAt);
+          const expired = status === 'expired';
+          const soon = status === 'soon';
+          const expiryLabel = formatExpiryDate(item.expiryAt);
+          const a11y = `${item.merchant}, ${formatMoney(item.balanceCents, item.currency)}`;
+
+          return (
+            <Pressable
+              style={[styles.row, rtl && styles.rowRtl, expired && styles.rowMuted]}
+              onPress={() => navigation.navigate('Detail', { entryId: item.id })}
+              accessibilityRole="button"
+              accessibilityLabel={a11y}
             >
-              {formatMoney(item.balanceCents, item.currency)}
-            </Text>
-          </Pressable>
-        );
-      }}
-    />
+              <View style={styles.rowText}>
+                <Text style={[styles.merchant, expired && styles.mutedText]} numberOfLines={1}>
+                  {item.merchant}
+                </Text>
+                <Text style={[styles.meta, expired && styles.mutedText]}>
+                  {t(`types.${item.type}`)}
+                </Text>
+                {soon && expiryLabel ? (
+                  <Text style={styles.soonCue}>
+                    {t('expiresOn', { date: expiryLabel })}
+                  </Text>
+                ) : null}
+                {expired ? <Text style={styles.expiredCue}>{t('expired')}</Text> : null}
+              </View>
+              <Text
+                style={[
+                  styles.balance,
+                  negative && styles.balanceNeg,
+                  expired && styles.mutedText,
+                ]}
+              >
+                {formatMoney(item.balanceCents, item.currency)}
+              </Text>
+            </Pressable>
+          );
+        }}
+      />
+      {fab}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f7f8fa' },
   list: { flex: 1, backgroundColor: '#f7f8fa' },
   content: { paddingVertical: 8 },
   centered: {
@@ -192,6 +223,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   retryText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  headerBtn: { paddingHorizontal: 8, minHeight: 44, justifyContent: 'center' },
-  headerBtnText: { color: '#2563eb', fontSize: 16, fontWeight: '600' },
+  fab: {
+    position: 'absolute',
+    width: FAB_SIZE,
+    height: FAB_SIZE,
+    borderRadius: FAB_SIZE / 2,
+    backgroundColor: '#111827',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Soft shadow (iOS + Android)
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  fabPlus: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: '400',
+    lineHeight: 36,
+    marginTop: -2,
+  },
 });
