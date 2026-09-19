@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -16,6 +16,7 @@ import type { BalanceEntry } from '../models/types';
 import { formatMoney } from '../components/format';
 import { expiryStatus, formatExpiryDate } from '../components/expiry';
 import { isRtl, t } from '../i18n';
+import { useSettings } from '../settings/SettingsContext';
 import type { RootStackParamList } from './types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -29,6 +30,7 @@ export function HomeScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const rtl = isRtl();
   const insets = useSafeAreaInsets();
+  const { colors, language } = useSettings();
 
   const load = useCallback(async () => {
     setError(null);
@@ -49,17 +51,106 @@ export function HomeScreen({ navigation }: Props) {
     }, [load]),
   );
 
-  // FAB is the sole create CTA — clear any header Add.
+  // Trailing gear → Settings. With Yoga LTR + isRtl(): LTR = headerRight, RTL = headerLeft.
   useLayoutEffect(() => {
-    navigation.setOptions({ headerRight: undefined });
-  }, [navigation]);
+    const gear = (
+      <Pressable
+        onPress={() => navigation.navigate('Settings')}
+        accessibilityRole="button"
+        accessibilityLabel={t('settingsA11y')}
+        hitSlop={8}
+        style={styles.headerBtn}
+      >
+        <Text style={[styles.gear, { color: colors.headerTint }]}>⚙</Text>
+      </Pressable>
+    );
+    navigation.setOptions({
+      title: t('title'),
+      headerRight: rtl ? undefined : () => gear,
+      headerLeft: rtl ? () => gear : undefined,
+    });
+  }, [navigation, rtl, colors.headerTint, language]);
 
   const openCreate = useCallback(() => {
     navigation.navigate('EditEntry', {});
   }, [navigation]);
 
+  const stylesThemed = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.background },
+        list: { flex: 1, backgroundColor: colors.background },
+        content: { paddingVertical: 8 },
+        centered: {
+          flexGrow: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+          gap: 8,
+        },
+        row: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: colors.card,
+          marginHorizontal: 12,
+          marginVertical: 4,
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          borderRadius: 12,
+          gap: 12,
+          minHeight: 56,
+        },
+        rowRtl: { flexDirection: 'row-reverse' },
+        rowMuted: { opacity: 0.55 },
+        rowText: { flex: 1, gap: 2 },
+        merchant: { fontSize: 16, fontWeight: '600', color: colors.text },
+        meta: { fontSize: 13, color: colors.muted },
+        soonCue: { fontSize: 12, color: colors.soon, marginTop: 2 },
+        expiredCue: { fontSize: 12, color: colors.muted, marginTop: 2 },
+        balance: { fontSize: 16, fontWeight: '700', color: colors.text },
+        balanceNeg: { color: colors.danger },
+        mutedText: { color: colors.muted },
+        empty: { fontSize: 18, fontWeight: '600', color: colors.text },
+        muted: { fontSize: 14, color: colors.muted, textAlign: 'center' },
+        error: { fontSize: 15, color: colors.danger, textAlign: 'center' },
+        retry: {
+          marginTop: 8,
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          borderRadius: 8,
+          backgroundColor: colors.primary,
+          minHeight: 44,
+          justifyContent: 'center',
+        },
+        retryText: { color: colors.primaryText, fontWeight: '600', fontSize: 15 },
+        fab: {
+          position: 'absolute',
+          width: FAB_SIZE,
+          height: FAB_SIZE,
+          borderRadius: FAB_SIZE / 2,
+          backgroundColor: colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.22,
+          shadowRadius: 8,
+          elevation: 6,
+        },
+        fabPressed: { opacity: 0.9 },
+        fabPlus: {
+          color: colors.primaryText,
+          fontSize: 32,
+          fontWeight: '400',
+          lineHeight: 36,
+          marginTop: -2,
+        },
+      }),
+    [colors],
+  );
+
   const fabStyle = [
-    styles.fab,
+    stylesThemed.fab,
     {
       bottom: FAB_MARGIN + insets.bottom,
       ...(rtl
@@ -70,12 +161,12 @@ export function HomeScreen({ navigation }: Props) {
 
   const fab = (
     <Pressable
-      style={({ pressed }) => [fabStyle, pressed && styles.fabPressed]}
+      style={({ pressed }) => [fabStyle, pressed && stylesThemed.fabPressed]}
       onPress={openCreate}
       accessibilityRole="button"
       accessibilityLabel={t('addEntry')}
     >
-      <Text style={styles.fabPlus} accessible={false}>
+      <Text style={stylesThemed.fabPlus} accessible={false}>
         +
       </Text>
     </Pressable>
@@ -83,10 +174,10 @@ export function HomeScreen({ navigation }: Props) {
 
   if (loading && entries.length === 0 && !error) {
     return (
-      <View style={styles.container}>
-        <View style={styles.centered}>
-          <ActivityIndicator />
-          <Text style={styles.muted}>{t('loading')}</Text>
+      <View style={stylesThemed.container}>
+        <View style={stylesThemed.centered}>
+          <ActivityIndicator color={colors.text} />
+          <Text style={stylesThemed.muted}>{t('loading')}</Text>
         </View>
         {fab}
       </View>
@@ -95,10 +186,10 @@ export function HomeScreen({ navigation }: Props) {
 
   if (error) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.error}>{error}</Text>
+      <View style={[stylesThemed.container, stylesThemed.centered]}>
+        <Text style={stylesThemed.error}>{error}</Text>
         <Pressable
-          style={styles.retry}
+          style={stylesThemed.retry}
           onPress={() => {
             setLoading(true);
             void load();
@@ -106,7 +197,7 @@ export function HomeScreen({ navigation }: Props) {
           accessibilityRole="button"
           accessibilityLabel={t('retry')}
         >
-          <Text style={styles.retryText}>{t('retry')}</Text>
+          <Text style={stylesThemed.retryText}>{t('retry')}</Text>
         </Pressable>
       </View>
     );
@@ -115,20 +206,26 @@ export function HomeScreen({ navigation }: Props) {
   const listBottomPad = FAB_SIZE + FAB_MARGIN * 2 + insets.bottom;
 
   return (
-    <View style={styles.container}>
+    <View style={stylesThemed.container}>
       <FlatList
-        style={styles.list}
+        style={stylesThemed.list}
         contentContainerStyle={[
-          entries.length === 0 ? styles.centered : styles.content,
+          entries.length === 0 ? stylesThemed.centered : stylesThemed.content,
           { paddingBottom: listBottomPad },
         ]}
         data={entries}
         keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={load}
+            tintColor={colors.text}
+          />
+        }
         ListEmptyComponent={
-          <View style={styles.centered}>
-            <Text style={styles.empty}>{t('empty')}</Text>
-            <Text style={styles.muted}>{t('emptyHint')}</Text>
+          <View style={stylesThemed.centered}>
+            <Text style={stylesThemed.empty}>{t('empty')}</Text>
+            <Text style={stylesThemed.muted}>{t('emptyHint')}</Text>
           </View>
         }
         renderItem={({ item }) => {
@@ -141,30 +238,39 @@ export function HomeScreen({ navigation }: Props) {
 
           return (
             <Pressable
-              style={[styles.row, rtl && styles.rowRtl, expired && styles.rowMuted]}
+              style={[
+                stylesThemed.row,
+                rtl && stylesThemed.rowRtl,
+                expired && stylesThemed.rowMuted,
+              ]}
               onPress={() => navigation.navigate('Detail', { entryId: item.id })}
               accessibilityRole="button"
               accessibilityLabel={a11y}
             >
-              <View style={styles.rowText}>
-                <Text style={[styles.merchant, expired && styles.mutedText]} numberOfLines={1}>
+              <View style={stylesThemed.rowText}>
+                <Text
+                  style={[stylesThemed.merchant, expired && stylesThemed.mutedText]}
+                  numberOfLines={1}
+                >
                   {item.merchant}
                 </Text>
-                <Text style={[styles.meta, expired && styles.mutedText]}>
+                <Text style={[stylesThemed.meta, expired && stylesThemed.mutedText]}>
                   {t(`types.${item.type}`)}
                 </Text>
                 {soon && expiryLabel ? (
-                  <Text style={styles.soonCue}>
+                  <Text style={stylesThemed.soonCue}>
                     {t('expiresOn', { date: expiryLabel })}
                   </Text>
                 ) : null}
-                {expired ? <Text style={styles.expiredCue}>{t('expired')}</Text> : null}
+                {expired ? (
+                  <Text style={stylesThemed.expiredCue}>{t('expired')}</Text>
+                ) : null}
               </View>
               <Text
                 style={[
-                  styles.balance,
-                  negative && styles.balanceNeg,
-                  expired && styles.mutedText,
+                  stylesThemed.balance,
+                  negative && stylesThemed.balanceNeg,
+                  expired && stylesThemed.mutedText,
                 ]}
               >
                 {formatMoney(item.balanceCents, item.currency)}
@@ -179,72 +285,12 @@ export function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f8fa' },
-  list: { flex: 1, backgroundColor: '#f7f8fa' },
-  content: { paddingVertical: 8 },
-  centered: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-    gap: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    marginHorizontal: 12,
-    marginVertical: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 12,
-    minHeight: 56,
-  },
-  rowRtl: { flexDirection: 'row-reverse' },
-  rowMuted: { opacity: 0.55 },
-  rowText: { flex: 1, gap: 2 },
-  merchant: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  meta: { fontSize: 13, color: '#6b7280' },
-  soonCue: { fontSize: 12, color: '#b45309', marginTop: 2 },
-  expiredCue: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
-  balance: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  balanceNeg: { color: '#dc2626' },
-  mutedText: { color: '#9ca3af' },
-  empty: { fontSize: 18, fontWeight: '600', color: '#111827' },
-  muted: { fontSize: 14, color: '#6b7280', textAlign: 'center' },
-  error: { fontSize: 15, color: '#dc2626', textAlign: 'center' },
-  retry: {
-    marginTop: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#111827',
+  headerBtn: {
+    paddingHorizontal: 8,
     minHeight: 44,
+    minWidth: 44,
     justifyContent: 'center',
-  },
-  retryText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  fab: {
-    position: 'absolute',
-    width: FAB_SIZE,
-    height: FAB_SIZE,
-    borderRadius: FAB_SIZE / 2,
-    backgroundColor: '#111827',
     alignItems: 'center',
-    justifyContent: 'center',
-    // Soft shadow (iOS + Android)
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
-    elevation: 6,
   },
-  fabPressed: { opacity: 0.9 },
-  fabPlus: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: '400',
-    lineHeight: 36,
-    marginTop: -2,
-  },
+  gear: { fontSize: 22 },
 });
