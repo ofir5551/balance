@@ -1,16 +1,20 @@
 import * as SQLite from 'expo-sqlite';
+import { migrate } from './migrations';
 
 const DB_NAME = 'balance.db';
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 /**
- * Opens (and caches) the local SQLite database.
- * Full schema/migrations land in ME-2 — ME-1 only proves the DB opens.
+ * Opens (and caches) the local SQLite database, running migrations once.
  */
 export function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!dbPromise) {
-    dbPromise = SQLite.openDatabaseAsync(DB_NAME);
+    dbPromise = (async () => {
+      const db = await SQLite.openDatabaseAsync(DB_NAME);
+      await migrate(db);
+      return db;
+    })();
   }
   return dbPromise;
 }

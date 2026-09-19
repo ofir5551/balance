@@ -1,6 +1,5 @@
 # db
 
-SQLite access via `expo-sqlite`.
-
-- ME-1: `client.ts` opens `balance.db` and pings with `SELECT 1`
-- ME-2: migrations, `BalanceEntry` / `SpendEvent` tables, repository
+- `client.ts` — open DB + migrate
+- `migrations.ts` — schema v1 (no balance≥0 CHECK; indexes on spend entry_id + expiry_at)
+- `repository.ts` — CRUD + `recordSpend` (requires override when post-balance < 0)
