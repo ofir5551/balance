@@ -145,9 +145,11 @@ export function EditEntryScreen({ navigation, route }: Props) {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag">
         <Text style={[styles.label, rtl && styles.textRtl]}>{t('type')}</Text>
         <View style={[styles.chips, rtl && styles.chipsRtl]}>
           {TYPES.map((tp) => (
@@ -259,7 +261,7 @@ export function EditEntryScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { padding: 16, gap: 8, paddingBottom: 40 },
+  content: { padding: 16, gap: 8, paddingBottom: 120 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 13, color: '#6b7280', marginTop: 8 },
   textRtl: { textAlign: 'right', writingDirection: 'rtl' },
