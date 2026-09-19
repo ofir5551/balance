@@ -2,7 +2,6 @@ import { useCallback, useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  I18nManager,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -28,7 +27,7 @@ export function HomeScreen({ navigation }: Props) {
   const [entries, setEntries] = useState<BalanceEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const rtl = isRtl() || I18nManager.isRTL;
+  const rtl = isRtl();
   const insets = useSafeAreaInsets();
 
   const load = useCallback(async () => {

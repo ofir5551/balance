@@ -7,7 +7,6 @@ import {
   Text,
   TextInput,
   View,
-  I18nManager,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useFocusEffect } from '@react-navigation/native';
@@ -53,7 +52,7 @@ function parseMajorToCents(raw: string): number | null {
 
 export function DetailScreen({ navigation, route }: Props) {
   const { entryId } = route.params;
-  const rtl = isRtl() || I18nManager.isRTL;
+  const rtl = isRtl();
   const [entry, setEntry] = useState<BalanceEntry | null>(null);
   const [history, setHistory] = useState<SpendEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +60,7 @@ export function DetailScreen({ navigation, route }: Props) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [spending, setSpending] = useState(false);
+  const [inputFocus, setInputFocus] = useState<'amount' | 'note' | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -235,23 +235,35 @@ export function DetailScreen({ navigation, route }: Props) {
       </View>
 
       <View style={styles.spendCard}>
-        <Text style={[styles.section, rtl && styles.textRtl]}>{t('spend')}</Text>
+        <Text style={[styles.section, rtl && styles.textRtl]}>{t('spendSection')}</Text>
         <Text style={[styles.label, rtl && styles.textRtl]}>{t('spendAmount')}</Text>
         <TextInput
-          style={[styles.input, rtl && styles.inputRtl]}
+          style={[
+            styles.input,
+            rtl && styles.inputRtl,
+            inputFocus === 'amount' && styles.inputFocused,
+          ]}
           value={amount}
           onChangeText={setAmount}
           placeholder={t('spendPlaceholder')}
           keyboardType="decimal-pad"
           accessibilityLabel={t('spendAmount')}
+          onFocus={() => setInputFocus('amount')}
+          onBlur={() => setInputFocus((f) => (f === 'amount' ? null : f))}
         />
         <Text style={[styles.label, rtl && styles.textRtl]}>{t('spendNote')}</Text>
         <TextInput
-          style={[styles.input, rtl && styles.inputRtl]}
+          style={[
+            styles.input,
+            rtl && styles.inputRtl,
+            inputFocus === 'note' && styles.inputFocused,
+          ]}
           value={note}
           onChangeText={setNote}
           placeholder={t('spendNotePlaceholder')}
           accessibilityLabel={t('spendNote')}
+          onFocus={() => setInputFocus('note')}
+          onBlur={() => setInputFocus((f) => (f === 'note' ? null : f))}
         />
         <Pressable
           style={[styles.spendBtn, spending && styles.spendDisabled]}
@@ -334,12 +346,16 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     fontSize: 16,
     minHeight: 44,
     marginBottom: 4,
+  },
+  inputFocused: {
+    borderColor: '#111827',
   },
   section: { marginTop: 4, fontSize: 16, fontWeight: '700', color: '#111827' },
   spendBtn: {
