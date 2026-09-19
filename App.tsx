@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { I18nManager } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
@@ -12,6 +13,13 @@ import { t } from './src/i18n';
 import { scheduleWeeklyExpiryReminder } from './src/notifications/weeklyExpiry';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// HE RTL is applied manually via isRtl() (Home rows, chips, FAB side).
+// Pin Yoga to LTR so those flips are not double-applied; EN stays LTR.
+I18nManager.allowRTL(false);
+if (I18nManager.isRTL) {
+  I18nManager.forceRTL(false);
+}
 
 export default function App() {
   useEffect(() => {
