@@ -214,14 +214,16 @@ export function DetailScreen({ navigation, route }: Props) {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      // Android: softwareKeyboardLayoutMode=resize already shrinks the window;
+      // KAV behavior=height fights that. iOS still needs padding.
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="on-drag"
+      keyboardDismissMode="none"
     >
       <Text
         style={[styles.balance, negative && styles.balanceNeg, rtl && styles.textRtl]}
