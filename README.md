@@ -2,7 +2,7 @@
 
 Personal **offline-first** gift-card & store-credit tracker.
 
-**Stack:** Expo (managed) + TypeScript · `expo-sqlite` · `expo-notifications` (wired later) · device locale (EN/HE from ME-1)
+**Stack:** Expo (managed) + TypeScript · `expo-sqlite` · `expo-notifications` (ME-6 weekly Sunday 18:00 local) · device locale (EN/HE from ME-1)
 
 ## Prerequisites
 
@@ -50,12 +50,13 @@ A Mac is required only if you build with Xcode locally; EAS cloud builds do not 
 
 ```
 src/
-  db/          # SQLite client (schema/migrations in ME-2)
-  models/      # BalanceEntry, SpendEvent (ME-2)
-  screens/     # list / detail / forms (ME-3+)
-  components/  # shared UI
-App.tsx        # ME-1 placeholder home + SQLite ping
-eas.json       # EAS development + preview + production
+  db/            # SQLite client (schema/migrations in ME-2)
+  models/        # BalanceEntry, SpendEvent (ME-2)
+  screens/       # list / detail / forms (ME-3+)
+  components/    # shared UI
+  notifications/ # ME-6 weekly expiry reminder
+App.tsx          # navigation + schedule weekly reminder on mount
+eas.json         # EAS development + preview + production
 ```
 
 ## Ticket map
@@ -67,7 +68,7 @@ eas.json       # EAS development + preview + production
 | ME-3 | Home list + detail + history |
 | ME-4 | Create / edit / delete |
 | ME-5 | Partial spend |
-| ME-6 | Weekly local notification |
+| ME-6 | Weekly local notification (wired — Sunday 18:00 device-local, `SOON_EXPIRING_DAYS`) |
 
 ## License
 
