@@ -1,6 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,9 +10,10 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { getEntry, listSpendEvents } from '../db/repository';
+import { deleteEntry, getEntry, listSpendEvents } from '../db/repository';
 import type { BalanceEntry, SpendEvent } from '../models/types';
 import { formatMoney } from '../components/format';
+import { formatExpiryDate } from '../components/expiry';
 import { t } from '../i18n';
 import type { RootStackParamList } from './types';
 
@@ -25,7 +28,7 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function DetailScreen({ route }: Props) {
+export function DetailScreen({ navigation, route }: Props) {
   const { entryId } = route.params;
   const [entry, setEntry] = useState<BalanceEntry | null>(null);
   const [history, setHistory] = useState<SpendEvent[]>([]);
@@ -56,6 +59,39 @@ export function DetailScreen({ route }: Props) {
     }, [load]),
   );
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () =>
+        entry ? (
+          <Pressable
+            onPress={() => navigation.navigate('EditEntry', { entryId })}
+            accessibilityRole="button"
+            accessibilityLabel={t('edit')}
+            hitSlop={8}
+            style={styles.headerBtn}
+          >
+            <Text style={styles.headerBtnText}>{t('edit')}</Text>
+          </Pressable>
+        ) : null,
+    });
+  }, [navigation, entry, entryId]);
+
+  const onDelete = () => {
+    Alert.alert(t('deleteConfirmTitle'), t('deleteConfirmBody'), [
+      { text: t('cancel'), style: 'cancel' },
+      {
+        text: t('delete'),
+        style: 'destructive',
+        onPress: () => {
+          void (async () => {
+            await deleteEntry(entryId);
+            navigation.goBack();
+          })();
+        },
+      },
+    ]);
+  };
+
   if (loading && !entry) {
     return (
       <View style={styles.centered}>
@@ -69,6 +105,17 @@ export function DetailScreen({ route }: Props) {
     return (
       <View style={styles.centered}>
         <Text style={styles.error}>{error ?? t('dbError')}</Text>
+        <Pressable
+          style={styles.retry}
+          onPress={() => {
+            setLoading(true);
+            void load();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={t('retry')}
+        >
+          <Text style={styles.retryText}>{t('retry')}</Text>
+        </Pressable>
       </View>
     );
   }
@@ -78,6 +125,7 @@ export function DetailScreen({ route }: Props) {
     entry.acceptingStores.length > 0
       ? entry.acceptingStores.join(', ')
       : t('none');
+  const expiryDisplay = formatExpiryDate(entry.expiryAt) ?? t('none');
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
@@ -92,7 +140,7 @@ export function DetailScreen({ route }: Props) {
       <View style={styles.card}>
         <Field label={t('type')} value={t(`types.${entry.type}`)} />
         <Field label={t('currency')} value={entry.currency} />
-        <Field label={t('expiry')} value={entry.expiryAt ?? t('none')} />
+        <Field label={t('expiry')} value={expiryDisplay} />
         <Field label={t('accepting')} value={accepting} />
         <Field label={t('codeNote')} value={entry.codeNote ?? t('none')} />
       </View>
@@ -114,13 +162,22 @@ export function DetailScreen({ route }: Props) {
           </View>
         ))
       )}
+
+      <Pressable
+        style={styles.deleteBtn}
+        onPress={onDelete}
+        accessibilityRole="button"
+        accessibilityLabel={t('delete')}
+      >
+        <Text style={styles.deleteText}>{t('delete')}</Text>
+      </Pressable>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: '#f7f8fa' },
-  content: { padding: 16, gap: 8 },
+  content: { padding: 16, gap: 8, paddingBottom: 40 },
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -139,21 +196,25 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   field: { gap: 2 },
-  label: { fontSize: 12, color: '#6b7280', textTransform: 'uppercase' },
+  label: { fontSize: 12, color: '#6b7280' },
   value: { fontSize: 15, color: '#111827' },
-  section: {
-    marginTop: 8,
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  event: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 12,
-    gap: 2,
-  },
+  section: { marginTop: 8, fontSize: 16, fontWeight: '700', color: '#111827' },
+  event: { backgroundColor: '#fff', borderRadius: 10, padding: 12, gap: 2 },
   eventAmount: { fontSize: 15, fontWeight: '600', color: '#111827' },
   muted: { fontSize: 13, color: '#6b7280' },
   error: { fontSize: 15, color: '#dc2626', textAlign: 'center' },
+  retry: {
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#111827',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  retryText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  headerBtn: { paddingHorizontal: 8, minHeight: 44, justifyContent: 'center' },
+  headerBtnText: { color: '#2563eb', fontSize: 16, fontWeight: '600' },
+  deleteBtn: { marginTop: 24, alignItems: 'center', paddingVertical: 14, minHeight: 44 },
+  deleteText: { color: '#dc2626', fontSize: 16, fontWeight: '600' },
 });
