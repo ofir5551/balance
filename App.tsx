@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
@@ -6,10 +7,15 @@ import { DetailScreen } from './src/screens/DetailScreen';
 import { EditEntryScreen } from './src/screens/EditEntryScreen';
 import type { RootStackParamList } from './src/screens/types';
 import { t } from './src/i18n';
+import { scheduleWeeklyExpiryReminder } from './src/notifications/weeklyExpiry';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  useEffect(() => {
+    void scheduleWeeklyExpiryReminder();
+  }, []);
+
   return (
     <NavigationContainer>
       <StatusBar style="auto" />

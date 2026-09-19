@@ -55,6 +55,12 @@ const i18n = new I18n({
       voucher: 'Voucher',
       other: 'Other',
     },
+    notifChannelName: 'Expiry reminders',
+    notifWeeklyTitle: 'Balance reminder',
+    notifWeeklyBodySome:
+      'You have %{count} item(s) expired or expiring within 14 days. Open Balance to review.',
+    notifWeeklyBodyNone:
+      "Nothing expired or expiring within 14 days. You're all set.",
   },
   he: {
     title: 'Balance',
@@ -108,6 +114,12 @@ const i18n = new I18n({
       voucher: 'שובר',
       other: 'אחר',
     },
+    notifChannelName: 'תזכורות תוקף',
+    notifWeeklyTitle: 'תזכורת Balance',
+    notifWeeklyBodySome:
+      'יש לך %{count} פריטים שפג תוקפם או שיפוג תוקפם בתוך 14 יום. פתח את Balance לבדיקה.',
+    notifWeeklyBodyNone:
+      'אין פריטים שפג תוקפם או שיפוג תוקפם בתוך 14 יום. הכול בסדר.',
   },
 });
 
