@@ -25,6 +25,7 @@ import {
 import { createEntry, getEntry, updateEntry } from '../db/repository';
 import type { BalanceEntryType } from '../models/types';
 import { isRtl, t } from '../i18n';
+import { useSettings } from '../settings/SettingsContext';
 import type { RootStackParamList } from './types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditEntry'>;
@@ -47,6 +48,7 @@ function parseMajorToCents(raw: string): number | null {
 export function EditEntryScreen({ navigation, route }: Props) {
   const entryId = route.params?.entryId;
   const rtl = isRtl();
+  const { colors, language } = useSettings();
   const isEdit = Boolean(entryId);
 
   const [loading, setLoading] = useState(isEdit);
@@ -64,9 +66,127 @@ export function EditEntryScreen({ navigation, route }: Props) {
   const [codeNote, setCodeNote] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        flex: { flex: 1, backgroundColor: colors.background },
+        content: { padding: 16, gap: 8, paddingBottom: 120 },
+        centered: {
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.background,
+        },
+        label: { fontSize: 13, color: colors.muted, marginTop: 8 },
+        textRtl: { textAlign: 'right', writingDirection: 'rtl' },
+        inputRtl: { textAlign: 'right', writingDirection: 'rtl' },
+        input: {
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.inputBg,
+          borderRadius: 10,
+          paddingHorizontal: 12,
+          paddingVertical: 12,
+          fontSize: 16,
+          minHeight: 44,
+          color: colors.text,
+        },
+        multiline: { minHeight: 80, textAlignVertical: 'top' },
+        chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+        chipsRtl: { flexDirection: 'row-reverse' },
+        chip: {
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          borderRadius: 20,
+          backgroundColor: colors.chip,
+          minHeight: 36,
+          justifyContent: 'center',
+        },
+        chipOn: {
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          borderRadius: 20,
+          backgroundColor: colors.chipOn,
+          minHeight: 36,
+          justifyContent: 'center',
+        },
+        chipText: { color: colors.chipText, fontSize: 14 },
+        chipTextOn: { color: colors.chipOnText, fontSize: 14 },
+        expiryResult: {
+          fontSize: 16,
+          color: colors.text,
+          minHeight: 24,
+        },
+        expiryResultMuted: {
+          color: colors.muted,
+        },
+        pickDate: {
+          alignSelf: 'flex-start',
+          paddingVertical: 8,
+          minHeight: 44,
+          justifyContent: 'center',
+        },
+        pickDateRtl: { alignSelf: 'flex-end' },
+        pickDateText: {
+          fontSize: 15,
+          color: colors.link,
+          fontWeight: '500',
+        },
+        pickerActions: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        },
+        pickAction: {
+          paddingVertical: 8,
+          paddingHorizontal: 4,
+          minHeight: 44,
+          justifyContent: 'center',
+        },
+        pickActionMuted: {
+          fontSize: 15,
+          color: colors.muted,
+          fontWeight: '500',
+        },
+        row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+        rowRtl: { flexDirection: 'row-reverse' },
+        addStore: {
+          width: 44,
+          height: 44,
+          borderRadius: 10,
+          backgroundColor: colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        addStoreText: {
+          color: colors.primaryText,
+          fontSize: 22,
+          fontWeight: '600',
+        },
+        save: {
+          marginTop: 16,
+          backgroundColor: colors.primary,
+          borderRadius: 12,
+          paddingVertical: 14,
+          alignItems: 'center',
+          minHeight: 48,
+          justifyContent: 'center',
+        },
+        saveDisabled: { opacity: 0.5 },
+        saveText: {
+          color: colors.primaryText,
+          fontSize: 16,
+          fontWeight: '700',
+        },
+        error: { color: colors.danger, marginTop: 8 },
+        inputFlex: { flex: 1 },
+      }),
+    [colors],
+  );
+
   useEffect(() => {
     navigation.setOptions({ title: isEdit ? t('editTitle') : t('createTitle') });
-  }, [navigation, isEdit]);
+  }, [navigation, isEdit, language]);
 
   useEffect(() => {
     if (!entryId) return;
@@ -133,7 +253,6 @@ export function EditEntryScreen({ navigation, route }: Props) {
       confirmPicker(date);
       return;
     }
-    // iOS: spin updates draft; confirm via Done
     setPickerDraft(date);
   };
 
@@ -187,7 +306,7 @@ export function EditEntryScreen({ navigation, route }: Props) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.text} />
       </View>
     );
   }
@@ -198,274 +317,179 @@ export function EditEntryScreen({ navigation, route }: Props) {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="none"
-      // Scroll lower fields (balance, code/note, accepting) into view above keyboard.
       bottomOffset={48}
     >
-        <Text style={[styles.label, rtl && styles.textRtl]}>{t('type')}</Text>
-        <View style={[styles.chips, rtl && styles.chipsRtl]}>
-          {TYPES.map((tp) => (
+      <Text style={[styles.label, rtl && styles.textRtl]}>{t('type')}</Text>
+      <View style={[styles.chips, rtl && styles.chipsRtl]}>
+        {TYPES.map((tp) => (
+          <Pressable
+            key={tp}
+            onPress={() => setType(tp)}
+            style={[styles.chip, type === tp && styles.chipOn]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: type === tp }}
+          >
+            <Text style={[styles.chipText, type === tp && styles.chipTextOn]}>
+              {t(`types.${tp}`)}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <Text style={[styles.label, rtl && styles.textRtl]}>{t('merchant')} *</Text>
+      <TextInput
+        style={[styles.input, rtl && styles.inputRtl]}
+        value={merchant}
+        onChangeText={setMerchant}
+        placeholder={t('merchantPlaceholder')}
+        placeholderTextColor={colors.muted}
+        autoCapitalize="words"
+      />
+
+      <Text style={[styles.label, rtl && styles.textRtl]}>{t('balance')} *</Text>
+      <TextInput
+        style={[styles.input, rtl && styles.inputRtl]}
+        value={balance}
+        onChangeText={setBalance}
+        placeholder={t('balancePlaceholder')}
+        placeholderTextColor={colors.muted}
+        keyboardType="decimal-pad"
+      />
+
+      <Text style={[styles.label, rtl && styles.textRtl]}>{t('currency')} *</Text>
+      <TextInput
+        style={[styles.input, rtl && styles.inputRtl]}
+        value={currency}
+        onChangeText={setCurrency}
+        autoCapitalize="characters"
+        maxLength={3}
+        placeholderTextColor={colors.muted}
+      />
+
+      <Text style={[styles.label, rtl && styles.textRtl]}>{t('expiry')}</Text>
+      <Text
+        style={[
+          styles.expiryResult,
+          !expiry && styles.expiryResultMuted,
+          rtl && styles.textRtl,
+        ]}
+        accessibilityLabel={expiryA11yLabel}
+      >
+        {expiryResultText}
+      </Text>
+      <View style={[styles.chips, rtl && styles.chipsRtl]}>
+        {EXPIRY_PRESETS.map((p) => {
+          const selected = selectedPreset === p.id;
+          return (
             <Pressable
-              key={tp}
-              onPress={() => setType(tp)}
-              style={[styles.chip, type === tp && styles.chipOn]}
+              key={p.id}
+              onPress={() => onPresetPress(p.id)}
+              style={[styles.chip, selected && styles.chipOn]}
               accessibilityRole="button"
-              accessibilityState={{ selected: type === tp }}
+              accessibilityState={{ selected }}
             >
-              <Text style={[styles.chipText, type === tp && styles.chipTextOn]}>
-                {t(`types.${tp}`)}
+              <Text style={[styles.chipText, selected && styles.chipTextOn]}>
+                {t(p.labelKey)}
               </Text>
             </Pressable>
-          ))}
-        </View>
-
-        <Text style={[styles.label, rtl && styles.textRtl]}>{t('merchant')} *</Text>
-        <TextInput
-          style={[styles.input, rtl && styles.inputRtl]}
-          value={merchant}
-          onChangeText={setMerchant}
-          placeholder={t('merchantPlaceholder')}
-          autoCapitalize="words"
-        />
-
-        <Text style={[styles.label, rtl && styles.textRtl]}>{t('balance')} *</Text>
-        <TextInput
-          style={[styles.input, rtl && styles.inputRtl]}
-          value={balance}
-          onChangeText={setBalance}
-          placeholder={t('balancePlaceholder')}
-          keyboardType="decimal-pad"
-        />
-
-        <Text style={[styles.label, rtl && styles.textRtl]}>{t('currency')} *</Text>
-        <TextInput
-          style={[styles.input, rtl && styles.inputRtl]}
-          value={currency}
-          onChangeText={setCurrency}
-          autoCapitalize="characters"
-          maxLength={3}
-        />
-
-        <Text style={[styles.label, rtl && styles.textRtl]}>{t('expiry')}</Text>
-        <Text
-          style={[
-            styles.expiryResult,
-            !expiry && styles.expiryResultMuted,
-            rtl && styles.textRtl,
-          ]}
-          accessibilityLabel={expiryA11yLabel}
-        >
-          {expiryResultText}
+          );
+        })}
+      </View>
+      <Pressable
+        onPress={openPicker}
+        style={[styles.pickDate, rtl && styles.pickDateRtl]}
+        accessibilityRole="button"
+        accessibilityLabel={t('pickDate')}
+      >
+        <Text style={[styles.pickDateText, rtl && styles.textRtl]}>
+          {t('pickDate')}
         </Text>
-        <View style={[styles.chips, rtl && styles.chipsRtl]}>
-          {EXPIRY_PRESETS.map((p) => {
-            const selected = selectedPreset === p.id;
-            return (
-              <Pressable
-                key={p.id}
-                onPress={() => onPresetPress(p.id)}
-                style={[styles.chip, selected && styles.chipOn]}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-              >
-                <Text style={[styles.chipText, selected && styles.chipTextOn]}>
-                  {t(p.labelKey)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <Pressable
-          onPress={openPicker}
-          style={[styles.pickDate, rtl && styles.pickDateRtl]}
-          accessibilityRole="button"
-          accessibilityLabel={t('pickDate')}
-        >
-          <Text style={[styles.pickDateText, rtl && styles.textRtl]}>
-            {t('pickDate')}
-          </Text>
-        </Pressable>
-        {showPicker ? (
-          <>
-            <DateTimePicker
-              value={pickerDraft}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onValueChange={onPickerValueChange}
-              onDismiss={onPickerDismiss}
-            />
-            {Platform.OS === 'ios' ? (
-              <View style={[styles.pickerActions, rtl && styles.rowRtl]}>
-                <Pressable
-                  onPress={() => setShowPicker(false)}
-                  style={styles.pickAction}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('cancel')}
-                >
-                  <Text style={styles.pickActionMuted}>{t('cancel')}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => confirmPicker(pickerDraft)}
-                  style={styles.pickAction}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('pickDate')}
-                >
-                  <Text style={styles.pickDateText}>{t('pickDate')}</Text>
-                </Pressable>
-              </View>
-            ) : null}
-          </>
-        ) : null}
-
-        <Text style={[styles.label, rtl && styles.textRtl]}>{t('accepting')}</Text>
-        <View style={[styles.chips, rtl && styles.chipsRtl]}>
-          {stores.map((s) => (
-            <Pressable
-              key={s}
-              onPress={() => setStores((prev) => prev.filter((x) => x !== s))}
-              style={styles.chipOn}
-              accessibilityRole="button"
-              accessibilityLabel={`${t('delete')} ${s}`}
-            >
-              <Text style={styles.chipTextOn}>{s} ×</Text>
-            </Pressable>
-          ))}
-        </View>
-        <View style={[styles.row, rtl && styles.rowRtl]}>
-          <TextInput
-            style={[styles.input, styles.flex, rtl && styles.inputRtl]}
-            value={storeDraft}
-            onChangeText={setStoreDraft}
-            placeholder={t('acceptingPlaceholder')}
-            onSubmitEditing={addStore}
+      </Pressable>
+      {showPicker ? (
+        <>
+          <DateTimePicker
+            value={pickerDraft}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onValueChange={onPickerValueChange}
+            onDismiss={onPickerDismiss}
           />
-          <Pressable style={styles.addStore} onPress={addStore}>
-            <Text style={styles.addStoreText}>+</Text>
+          {Platform.OS === 'ios' ? (
+            <View style={[styles.pickerActions, rtl && styles.rowRtl]}>
+              <Pressable
+                onPress={() => setShowPicker(false)}
+                style={styles.pickAction}
+                accessibilityRole="button"
+                accessibilityLabel={t('cancel')}
+              >
+                <Text style={styles.pickActionMuted}>{t('cancel')}</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => confirmPicker(pickerDraft)}
+                style={styles.pickAction}
+                accessibilityRole="button"
+                accessibilityLabel={t('pickDate')}
+              >
+                <Text style={styles.pickDateText}>{t('pickDate')}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+        </>
+      ) : null}
+
+      <Text style={[styles.label, rtl && styles.textRtl]}>{t('accepting')}</Text>
+      <View style={[styles.chips, rtl && styles.chipsRtl]}>
+        {stores.map((s) => (
+          <Pressable
+            key={s}
+            onPress={() => setStores((prev) => prev.filter((x) => x !== s))}
+            style={styles.chipOn}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('delete')} ${s}`}
+          >
+            <Text style={styles.chipTextOn}>{s} ×</Text>
           </Pressable>
-        </View>
-
-        <Text style={[styles.label, rtl && styles.textRtl]}>{t('codeNote')}</Text>
+        ))}
+      </View>
+      <View style={[styles.row, rtl && styles.rowRtl]}>
         <TextInput
-          style={[styles.input, styles.multiline, rtl && styles.inputRtl]}
-          value={codeNote}
-          onChangeText={setCodeNote}
-          placeholder={t('codeNotePlaceholder')}
-          multiline
+          style={[styles.input, styles.inputFlex, rtl && styles.inputRtl]}
+          value={storeDraft}
+          onChangeText={setStoreDraft}
+          placeholder={t('acceptingPlaceholder')}
+          placeholderTextColor={colors.muted}
+          onSubmitEditing={addStore}
         />
-
-        {error ? <Text style={[styles.error, rtl && styles.textRtl]}>{error}</Text> : null}
-
-        <Pressable
-          style={[styles.save, (!canSave || saving) && styles.saveDisabled]}
-          disabled={!canSave || saving}
-          onPress={() => void onSave()}
-          accessibilityRole="button"
-          accessibilityLabel={t('save')}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.saveText}>{t('save')}</Text>
-          )}
+        <Pressable style={styles.addStore} onPress={addStore}>
+          <Text style={styles.addStoreText}>+</Text>
         </Pressable>
+      </View>
+
+      <Text style={[styles.label, rtl && styles.textRtl]}>{t('codeNote')}</Text>
+      <TextInput
+        style={[styles.input, styles.multiline, rtl && styles.inputRtl]}
+        value={codeNote}
+        onChangeText={setCodeNote}
+        placeholder={t('codeNotePlaceholder')}
+        placeholderTextColor={colors.muted}
+        multiline
+      />
+
+      {error ? <Text style={[styles.error, rtl && styles.textRtl]}>{error}</Text> : null}
+
+      <Pressable
+        style={[styles.save, (!canSave || saving) && styles.saveDisabled]}
+        disabled={!canSave || saving}
+        onPress={() => void onSave()}
+        accessibilityRole="button"
+        accessibilityLabel={t('save')}
+      >
+        {saving ? (
+          <ActivityIndicator color={colors.primaryText} />
+        ) : (
+          <Text style={styles.saveText}>{t('save')}</Text>
+        )}
+      </Pressable>
     </KeyboardAwareScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  content: { padding: 16, gap: 8, paddingBottom: 120 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 13, color: '#6b7280', marginTop: 8 },
-  textRtl: { textAlign: 'right', writingDirection: 'rtl' },
-  inputRtl: { textAlign: 'right', writingDirection: 'rtl' },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    minHeight: 44,
-  },
-  multiline: { minHeight: 80, textAlignVertical: 'top' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chipsRtl: { flexDirection: 'row-reverse' },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    minHeight: 36,
-    justifyContent: 'center',
-  },
-  chipOn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#111827',
-    minHeight: 36,
-    justifyContent: 'center',
-  },
-  chipText: { color: '#374151', fontSize: 14 },
-  chipTextOn: { color: '#fff', fontSize: 14 },
-  expiryResult: {
-    fontSize: 16,
-    color: '#111827',
-    minHeight: 24,
-  },
-  expiryResultMuted: {
-    color: '#9ca3af',
-  },
-  pickDate: {
-    alignSelf: 'flex-start',
-    paddingVertical: 8,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  pickDateRtl: { alignSelf: 'flex-end' },
-  pickDateText: {
-    fontSize: 15,
-    color: '#2563eb',
-    fontWeight: '500',
-  },
-  pickerActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  pickAction: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  pickActionMuted: {
-    fontSize: 15,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  rowRtl: { flexDirection: 'row-reverse' },
-  addStore: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: '#111827',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addStoreText: { color: '#fff', fontSize: 22, fontWeight: '600' },
-  save: {
-    marginTop: 16,
-    backgroundColor: '#111827',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    minHeight: 48,
-    justifyContent: 'center',
-  },
-  saveDisabled: { opacity: 0.5 },
-  saveText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  error: { color: '#dc2626', marginTop: 8 },
-});

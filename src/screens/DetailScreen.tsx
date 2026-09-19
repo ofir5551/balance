@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,8 @@ import type { BalanceEntry, SpendEvent } from '../models/types';
 import { formatMoney } from '../components/format';
 import { formatExpiryDate } from '../components/expiry';
 import { isRtl, t } from '../i18n';
+import { useSettings } from '../settings/SettingsContext';
+import type { ThemeColors } from '../theme/colors';
 import type { RootStackParamList } from './types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Detail'>;
@@ -24,18 +26,34 @@ function Field({
   label,
   value,
   rtl,
+  colors,
 }: {
   label: string;
   value: string;
   rtl: boolean;
+  colors: ThemeColors;
 }) {
   const align = rtl ? ('right' as const) : ('left' as const);
   return (
-    <View style={styles.field}>
-      <Text style={[styles.label, { textAlign: align, writingDirection: rtl ? 'rtl' : 'ltr' }]}>
+    <View style={{ gap: 2 }}>
+      <Text
+        style={{
+          fontSize: 12,
+          color: colors.muted,
+          textAlign: align,
+          writingDirection: rtl ? 'rtl' : 'ltr',
+        }}
+      >
         {label}
       </Text>
-      <Text style={[styles.value, { textAlign: align, writingDirection: rtl ? 'rtl' : 'ltr' }]}>
+      <Text
+        style={{
+          fontSize: 15,
+          color: colors.text,
+          textAlign: align,
+          writingDirection: rtl ? 'rtl' : 'ltr',
+        }}
+      >
         {value}
       </Text>
     </View>
@@ -53,6 +71,7 @@ function parseMajorToCents(raw: string): number | null {
 export function DetailScreen({ navigation, route }: Props) {
   const { entryId } = route.params;
   const rtl = isRtl();
+  const { colors, language } = useSettings();
   const [entry, setEntry] = useState<BalanceEntry | null>(null);
   const [history, setHistory] = useState<SpendEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +80,128 @@ export function DetailScreen({ navigation, route }: Props) {
   const [note, setNote] = useState('');
   const [spending, setSpending] = useState(false);
   const [inputFocus, setInputFocus] = useState<'amount' | 'note' | null>(null);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        scroll: { flex: 1, backgroundColor: colors.background },
+        content: { padding: 16, gap: 8, paddingBottom: 120 },
+        centered: {
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+          gap: 8,
+          backgroundColor: colors.background,
+        },
+        textRtl: { textAlign: 'right', writingDirection: 'rtl' },
+        balance: { fontSize: 32, fontWeight: '700', color: colors.text },
+        balanceNeg: { color: colors.danger },
+        merchant: {
+          fontSize: 18,
+          fontWeight: '600',
+          color: colors.textSecondary,
+          marginBottom: 8,
+        },
+        card: {
+          backgroundColor: colors.card,
+          borderRadius: 12,
+          padding: 14,
+          gap: 10,
+          marginBottom: 8,
+        },
+        spendCard: {
+          backgroundColor: colors.card,
+          borderRadius: 12,
+          padding: 14,
+          gap: 6,
+          marginBottom: 8,
+        },
+        label: { fontSize: 12, color: colors.muted },
+        inputRtl: { textAlign: 'right', writingDirection: 'rtl' },
+        input: {
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.inputBg,
+          borderRadius: 10,
+          paddingHorizontal: 12,
+          paddingVertical: 12,
+          fontSize: 16,
+          minHeight: 44,
+          marginBottom: 4,
+          color: colors.text,
+        },
+        inputFocused: {
+          borderColor: colors.primary,
+        },
+        section: {
+          marginTop: 4,
+          fontSize: 16,
+          fontWeight: '700',
+          color: colors.text,
+        },
+        spendBtn: {
+          marginTop: 8,
+          backgroundColor: colors.primary,
+          borderRadius: 12,
+          paddingVertical: 14,
+          alignItems: 'center',
+          minHeight: 48,
+          justifyContent: 'center',
+        },
+        spendDisabled: { opacity: 0.5 },
+        spendBtnText: {
+          color: colors.primaryText,
+          fontSize: 16,
+          fontWeight: '700',
+        },
+        event: {
+          backgroundColor: colors.card,
+          borderRadius: 10,
+          padding: 12,
+          gap: 2,
+        },
+        eventAmount: { fontSize: 15, fontWeight: '600', color: colors.text },
+        muted: { fontSize: 13, color: colors.muted },
+        error: { fontSize: 15, color: colors.danger, textAlign: 'center' },
+        retry: {
+          marginTop: 8,
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          borderRadius: 8,
+          backgroundColor: colors.primary,
+          minHeight: 44,
+          justifyContent: 'center',
+        },
+        retryText: {
+          color: colors.primaryText,
+          fontWeight: '600',
+          fontSize: 15,
+        },
+        headerBtn: {
+          paddingHorizontal: 8,
+          minHeight: 44,
+          justifyContent: 'center',
+        },
+        headerBtnText: {
+          color: colors.link,
+          fontSize: 16,
+          fontWeight: '600',
+        },
+        deleteBtn: {
+          marginTop: 24,
+          alignItems: 'center',
+          paddingVertical: 14,
+          minHeight: 44,
+        },
+        deleteText: {
+          color: colors.danger,
+          fontSize: 16,
+          fontWeight: '600',
+        },
+      }),
+    [colors],
+  );
 
   const load = useCallback(async () => {
     setError(null);
@@ -88,6 +229,7 @@ export function DetailScreen({ navigation, route }: Props) {
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      title: t('detail'),
       headerRight: () =>
         entry ? (
           <Pressable
@@ -101,7 +243,7 @@ export function DetailScreen({ navigation, route }: Props) {
           </Pressable>
         ) : null,
     });
-  }, [navigation, entry, entryId]);
+  }, [navigation, entry, entryId, styles.headerBtn, styles.headerBtnText, language]);
 
   const applySpend = async (override: boolean, cents: number) => {
     setSpending(true);
@@ -177,7 +319,7 @@ export function DetailScreen({ navigation, route }: Props) {
   if (loading && !entry) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.text} />
         <Text style={styles.muted}>{t('loading')}</Text>
       </View>
     );
@@ -215,7 +357,6 @@ export function DetailScreen({ navigation, route }: Props) {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="none"
-      // Keep focused field (spend amount/note) + nearby Spend button above keyboard.
       bottomOffset={48}
     >
       <Text
@@ -227,11 +368,16 @@ export function DetailScreen({ navigation, route }: Props) {
       <Text style={[styles.merchant, rtl && styles.textRtl]}>{entry.merchant}</Text>
 
       <View style={styles.card}>
-        <Field rtl={rtl} label={t('type')} value={t(`types.${entry.type}`)} />
-        <Field rtl={rtl} label={t('currency')} value={entry.currency} />
-        <Field rtl={rtl} label={t('expiry')} value={expiryDisplay} />
-        <Field rtl={rtl} label={t('accepting')} value={accepting} />
-        <Field rtl={rtl} label={t('codeNote')} value={entry.codeNote ?? t('none')} />
+        <Field rtl={rtl} colors={colors} label={t('type')} value={t(`types.${entry.type}`)} />
+        <Field rtl={rtl} colors={colors} label={t('currency')} value={entry.currency} />
+        <Field rtl={rtl} colors={colors} label={t('expiry')} value={expiryDisplay} />
+        <Field rtl={rtl} colors={colors} label={t('accepting')} value={accepting} />
+        <Field
+          rtl={rtl}
+          colors={colors}
+          label={t('codeNote')}
+          value={entry.codeNote ?? t('none')}
+        />
       </View>
 
       <View style={styles.spendCard}>
@@ -246,6 +392,7 @@ export function DetailScreen({ navigation, route }: Props) {
           value={amount}
           onChangeText={setAmount}
           placeholder={t('spendPlaceholder')}
+          placeholderTextColor={colors.muted}
           keyboardType="decimal-pad"
           accessibilityLabel={t('spendAmount')}
           onFocus={() => setInputFocus('amount')}
@@ -261,6 +408,7 @@ export function DetailScreen({ navigation, route }: Props) {
           value={note}
           onChangeText={setNote}
           placeholder={t('spendNotePlaceholder')}
+          placeholderTextColor={colors.muted}
           accessibilityLabel={t('spendNote')}
           onFocus={() => setInputFocus('note')}
           onBlur={() => setInputFocus((f) => (f === 'note' ? null : f))}
@@ -273,7 +421,7 @@ export function DetailScreen({ navigation, route }: Props) {
           accessibilityLabel={t('spend')}
         >
           {spending ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.primaryText} />
           ) : (
             <Text style={styles.spendBtnText}>{t('spend')}</Text>
           )}
@@ -309,82 +457,3 @@ export function DetailScreen({ navigation, route }: Props) {
     </KeyboardAwareScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  scroll: { flex: 1, backgroundColor: '#f7f8fa' },
-  content: { padding: 16, gap: 8, paddingBottom: 120 },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-    gap: 8,
-  },
-  textRtl: { textAlign: 'right', writingDirection: 'rtl' },
-  balance: { fontSize: 32, fontWeight: '700', color: '#111827' },
-  balanceNeg: { color: '#dc2626' },
-  merchant: { fontSize: 18, fontWeight: '600', color: '#374151', marginBottom: 8 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    gap: 10,
-    marginBottom: 8,
-  },
-  spendCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    gap: 6,
-    marginBottom: 8,
-  },
-  field: { gap: 2 },
-  label: { fontSize: 12, color: '#6b7280' },
-  inputRtl: { textAlign: 'right', writingDirection: 'rtl' },
-  value: { fontSize: 15, color: '#111827' },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    minHeight: 44,
-    marginBottom: 4,
-  },
-  inputFocused: {
-    borderColor: '#111827',
-  },
-  section: { marginTop: 4, fontSize: 16, fontWeight: '700', color: '#111827' },
-  spendBtn: {
-    marginTop: 8,
-    backgroundColor: '#111827',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    minHeight: 48,
-    justifyContent: 'center',
-  },
-  spendDisabled: { opacity: 0.5 },
-  spendBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  event: { backgroundColor: '#fff', borderRadius: 10, padding: 12, gap: 2 },
-  eventAmount: { fontSize: 15, fontWeight: '600', color: '#111827' },
-  muted: { fontSize: 13, color: '#6b7280' },
-  error: { fontSize: 15, color: '#dc2626', textAlign: 'center' },
-  retry: {
-    marginTop: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#111827',
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  retryText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  headerBtn: { paddingHorizontal: 8, minHeight: 44, justifyContent: 'center' },
-  headerBtnText: { color: '#2563eb', fontSize: 16, fontWeight: '600' },
-  deleteBtn: { marginTop: 24, alignItems: 'center', paddingVertical: 14, minHeight: 44 },
-  deleteText: { color: '#dc2626', fontSize: 16, fontWeight: '600' },
-});

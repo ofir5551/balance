@@ -70,6 +70,15 @@ const i18n = new I18n({
       'You have %{count} item(s) expired or expiring within 14 days. Open Balance to review.',
     notifWeeklyBodyNone:
       "Nothing expired or expiring within 14 days. You're all set.",
+    settings: 'Settings',
+    settingsLanguage: 'Language',
+    settingsAppearance: 'Appearance',
+    langEn: 'EN',
+    langHe: 'HE',
+    appearanceLight: 'Light',
+    appearanceDark: 'Dark',
+    settingsSavedHint: 'Saved on this device',
+    settingsA11y: 'Settings',
   },
   he: {
     title: 'Balance',
@@ -138,13 +147,22 @@ const i18n = new I18n({
       'יש לך %{count} פריטים שפג תוקפם או שיפוג תוקפם בתוך 14 יום. פתח את Balance לבדיקה.',
     notifWeeklyBodyNone:
       'אין פריטים שפג תוקפם או שיפוג תוקפם בתוך 14 יום. הכול בסדר.',
+    settings: 'הגדרות',
+    settingsLanguage: 'שפה',
+    settingsAppearance: 'מראה',
+    langEn: 'EN',
+    langHe: 'HE',
+    appearanceLight: 'בהיר',
+    appearanceDark: 'כהה',
+    settingsSavedHint: 'נשמר במכשיר זה',
+    settingsA11y: 'הגדרות',
   },
 });
 
 i18n.defaultLocale = 'en';
 i18n.enableFallback = true;
 const code = Localization.getLocales()[0]?.languageCode ?? 'en';
-i18n.locale = code === 'he' ? 'he' : code;
+i18n.locale = code === 'he' ? 'he' : 'en';
 
 export default i18n;
 
@@ -154,4 +172,13 @@ export function t(key: string, options?: Record<string, unknown>): string {
 
 export function isRtl(): boolean {
   return i18n.locale === 'he';
+}
+
+/** Apply language immediately for `t()` / `isRtl()`. Prefs layer persists separately. */
+export function setLocale(locale: 'en' | 'he'): void {
+  i18n.locale = locale;
+}
+
+export function getLocale(): 'en' | 'he' {
+  return i18n.locale === 'he' ? 'he' : 'en';
 }
