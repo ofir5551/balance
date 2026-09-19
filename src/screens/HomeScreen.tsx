@@ -126,14 +126,10 @@ export function HomeScreen({ navigation }: Props) {
               </Text>
               {soon && expiryLabel ? (
                 <Text style={styles.soonCue}>
-                  {t('soonExpiring')} · {expiryLabel}
+                  {t('expiresOn', { date: expiryLabel })}
                 </Text>
               ) : null}
-              {expired && expiryLabel ? (
-                <Text style={styles.expiredCue}>
-                  {t('expired')} · {expiryLabel}
-                </Text>
-              ) : null}
+              {expired ? <Text style={styles.expiredCue}>{t('expired')}</Text> : null}
             </View>
             <Text
               style={[
