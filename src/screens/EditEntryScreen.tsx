@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -11,7 +11,19 @@ import {
   View,
   I18nManager,
 } from 'react-native';
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { formatExpiryDate } from '../components/expiry';
+import {
+  EXPIRY_PRESETS,
+  matchingPresetId,
+  parseIsoDateLocal,
+  presetExpiryIso,
+  toIsoDateLocal,
+  type ExpiryPresetId,
+} from '../components/expiryPresets';
 import { createEntry, getEntry, updateEntry } from '../db/repository';
 import type { BalanceEntryType } from '../models/types';
 import { isRtl, t } from '../i18n';
@@ -45,7 +57,10 @@ export function EditEntryScreen({ navigation, route }: Props) {
   const [merchant, setMerchant] = useState('');
   const [balance, setBalance] = useState('');
   const [currency, setCurrency] = useState('ILS');
-  const [expiry, setExpiry] = useState('');
+  /** YYYY-MM-DD or null */
+  const [expiry, setExpiry] = useState<string | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerDraft, setPickerDraft] = useState<Date>(() => new Date());
   const [stores, setStores] = useState<string[]>([]);
   const [storeDraft, setStoreDraft] = useState('');
   const [codeNote, setCodeNote] = useState('');
@@ -68,7 +83,7 @@ export function EditEntryScreen({ navigation, route }: Props) {
         setMerchant(e.merchant);
         setBalance((e.balanceCents / 100).toFixed(2));
         setCurrency(e.currency);
-        setExpiry(e.expiryAt ?? '');
+        setExpiry(e.expiryAt ?? null);
         setStores(e.acceptingStores);
         setCodeNote(e.codeNote ?? '');
       } catch {
@@ -91,6 +106,41 @@ export function EditEntryScreen({ navigation, route }: Props) {
     parseMajorToCents(balance) !== null &&
     currency.trim().length === 3;
 
+  const selectedPreset = useMemo(() => matchingPresetId(expiry), [expiry]);
+
+  const expiryResultText = formatExpiryDate(expiry) ?? t('none');
+  const expiryA11yLabel = `${t('expiry')}: ${expiryResultText}`;
+
+  const onPresetPress = (id: ExpiryPresetId) => {
+    setShowPicker(false);
+    if (id === 'none') {
+      setExpiry(null);
+      return;
+    }
+    setExpiry(presetExpiryIso(id));
+  };
+
+  const openPicker = () => {
+    setPickerDraft(expiry ? (parseIsoDateLocal(expiry) ?? new Date()) : new Date());
+    setShowPicker(true);
+  };
+
+  const confirmPicker = (date: Date) => {
+    setExpiry(toIsoDateLocal(date));
+    setShowPicker(false);
+  };
+
+  const onPickerChange = (event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowPicker(false);
+      if (event.type === 'dismissed' || !date) return;
+      confirmPicker(date);
+      return;
+    }
+    // iOS: spin updates draft; confirm via Done
+    if (date) setPickerDraft(date);
+  };
+
   const onSave = useCallback(async () => {
     const cents = parseMajorToCents(balance);
     if (!merchant.trim() || cents === null || currency.trim().length !== 3) {
@@ -106,7 +156,7 @@ export function EditEntryScreen({ navigation, route }: Props) {
         acceptingStores: stores,
         balanceCents: cents,
         currency: currency.trim().toUpperCase(),
-        expiryAt: expiry.trim() || null,
+        expiryAt: expiry,
         codeNote: codeNote.trim() || null,
       };
       if (isEdit && entryId) {
@@ -148,8 +198,11 @@ export function EditEntryScreen({ navigation, route }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag">
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <Text style={[styles.label, rtl && styles.textRtl]}>{t('type')}</Text>
         <View style={[styles.chips, rtl && styles.chipsRtl]}>
           {TYPES.map((tp) => (
@@ -195,13 +248,74 @@ export function EditEntryScreen({ navigation, route }: Props) {
         />
 
         <Text style={[styles.label, rtl && styles.textRtl]}>{t('expiry')}</Text>
-        <TextInput
-          style={[styles.input, rtl && styles.inputRtl]}
-          value={expiry}
-          onChangeText={setExpiry}
-          placeholder="YYYY-MM-DD"
-          autoCapitalize="none"
-        />
+        <Text
+          style={[
+            styles.expiryResult,
+            !expiry && styles.expiryResultMuted,
+            rtl && styles.textRtl,
+          ]}
+          accessibilityLabel={expiryA11yLabel}
+        >
+          {expiryResultText}
+        </Text>
+        <View style={[styles.chips, rtl && styles.chipsRtl]}>
+          {EXPIRY_PRESETS.map((p) => {
+            const selected = selectedPreset === p.id;
+            return (
+              <Pressable
+                key={p.id}
+                onPress={() => onPresetPress(p.id)}
+                style={[styles.expiryChip, selected && styles.expiryChipOn]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextOn]}>
+                  {t(p.labelKey)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Pressable
+          onPress={openPicker}
+          style={[styles.pickDate, rtl && styles.pickDateRtl]}
+          accessibilityRole="button"
+          accessibilityLabel={t('pickDate')}
+        >
+          <Text style={[styles.pickDateText, rtl && styles.textRtl]}>
+            {t('pickDate')}
+          </Text>
+        </Pressable>
+        {showPicker ? (
+          <>
+            <DateTimePicker
+              value={pickerDraft}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onPickerChange}
+            />
+            {Platform.OS === 'ios' ? (
+              <View style={[styles.pickerActions, rtl && styles.rowRtl]}>
+                <Pressable
+                  onPress={() => setShowPicker(false)}
+                  style={styles.pickAction}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('cancel')}
+                >
+                  <Text style={styles.pickActionMuted}>{t('cancel')}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => confirmPicker(pickerDraft)}
+                  style={styles.pickAction}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('pickDate')}
+                >
+                  <Text style={styles.pickDateText}>{t('pickDate')}</Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </>
+        ) : null}
 
         <Text style={[styles.label, rtl && styles.textRtl]}>{t('accepting')}</Text>
         <View style={[styles.chips, rtl && styles.chipsRtl]}>
@@ -287,6 +401,22 @@ const styles = StyleSheet.create({
     minHeight: 36,
     justifyContent: 'center',
   },
+  expiryChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  expiryChipOn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#111827',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
   chipOn: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -297,6 +427,42 @@ const styles = StyleSheet.create({
   },
   chipText: { color: '#374151', fontSize: 14 },
   chipTextOn: { color: '#fff', fontSize: 14 },
+  expiryResult: {
+    fontSize: 16,
+    color: '#111827',
+    minHeight: 24,
+  },
+  expiryResultMuted: {
+    color: '#9ca3af',
+  },
+  pickDate: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  pickDateRtl: { alignSelf: 'flex-end' },
+  pickDateText: {
+    fontSize: 15,
+    color: '#2563eb',
+    fontWeight: '500',
+  },
+  pickerActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  pickAction: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  pickActionMuted: {
+    fontSize: 15,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
   row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   rowRtl: { flexDirection: 'row-reverse' },
   addStore: {
