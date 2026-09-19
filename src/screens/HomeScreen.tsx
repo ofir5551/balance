@@ -71,7 +71,7 @@ export function HomeScreen({ navigation }: Props) {
 
   const fab = (
     <Pressable
-      style={fabStyle}
+      style={({ pressed }) => [fabStyle, pressed && styles.fabPressed]}
       onPress={openCreate}
       accessibilityRole="button"
       accessibilityLabel={t('addEntry')}
@@ -84,9 +84,12 @@ export function HomeScreen({ navigation }: Props) {
 
   if (loading && entries.length === 0 && !error) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator />
-        <Text style={styles.muted}>{t('loading')}</Text>
+      <View style={styles.container}>
+        <View style={styles.centered}>
+          <ActivityIndicator />
+          <Text style={styles.muted}>{t('loading')}</Text>
+        </View>
+        {fab}
       </View>
     );
   }
@@ -116,11 +119,10 @@ export function HomeScreen({ navigation }: Props) {
     <View style={styles.container}>
       <FlatList
         style={styles.list}
-        contentContainerStyle={
-          entries.length === 0
-            ? styles.centered
-            : [styles.content, { paddingBottom: listBottomPad }]
-        }
+        contentContainerStyle={[
+          entries.length === 0 ? styles.centered : styles.content,
+          { paddingBottom: listBottomPad },
+        ]}
         data={entries}
         keyExtractor={(item) => item.id}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
@@ -238,6 +240,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
+  fabPressed: { opacity: 0.9 },
   fabPlus: {
     color: '#fff',
     fontSize: 32,
