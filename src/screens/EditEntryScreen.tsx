@@ -9,11 +9,12 @@ import {
   Text,
   TextInput,
   View,
+  I18nManager,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createEntry, getEntry, updateEntry } from '../db/repository';
 import type { BalanceEntryType } from '../models/types';
-import { t } from '../i18n';
+import { isRtl, t } from '../i18n';
 import type { RootStackParamList } from './types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditEntry'>;
@@ -35,6 +36,7 @@ function parseMajorToCents(raw: string): number | null {
 
 export function EditEntryScreen({ navigation, route }: Props) {
   const entryId = route.params?.entryId;
+  const rtl = isRtl() || I18nManager.isRTL;
   const isEdit = Boolean(entryId);
 
   const [loading, setLoading] = useState(isEdit);
@@ -146,8 +148,8 @@ export function EditEntryScreen({ navigation, route }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.label}>{t('type')}</Text>
-        <View style={styles.chips}>
+        <Text style={[styles.label, rtl && styles.textRtl]}>{t('type')}</Text>
+        <View style={[styles.chips, rtl && styles.chipsRtl]}>
           {TYPES.map((tp) => (
             <Pressable
               key={tp}
@@ -163,44 +165,44 @@ export function EditEntryScreen({ navigation, route }: Props) {
           ))}
         </View>
 
-        <Text style={styles.label}>{t('merchant')} *</Text>
+        <Text style={[styles.label, rtl && styles.textRtl]}>{t('merchant')} *</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, rtl && styles.inputRtl]}
           value={merchant}
           onChangeText={setMerchant}
           placeholder={t('merchantPlaceholder')}
           autoCapitalize="words"
         />
 
-        <Text style={styles.label}>{t('balance')} *</Text>
+        <Text style={[styles.label, rtl && styles.textRtl]}>{t('balance')} *</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, rtl && styles.inputRtl]}
           value={balance}
           onChangeText={setBalance}
           placeholder={t('balancePlaceholder')}
           keyboardType="decimal-pad"
         />
 
-        <Text style={styles.label}>{t('currency')} *</Text>
+        <Text style={[styles.label, rtl && styles.textRtl]}>{t('currency')} *</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, rtl && styles.inputRtl]}
           value={currency}
           onChangeText={setCurrency}
           autoCapitalize="characters"
           maxLength={3}
         />
 
-        <Text style={styles.label}>{t('expiry')}</Text>
+        <Text style={[styles.label, rtl && styles.textRtl]}>{t('expiry')}</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, rtl && styles.inputRtl]}
           value={expiry}
           onChangeText={setExpiry}
           placeholder="YYYY-MM-DD"
           autoCapitalize="none"
         />
 
-        <Text style={styles.label}>{t('accepting')}</Text>
-        <View style={styles.chips}>
+        <Text style={[styles.label, rtl && styles.textRtl]}>{t('accepting')}</Text>
+        <View style={[styles.chips, rtl && styles.chipsRtl]}>
           {stores.map((s) => (
             <Pressable
               key={s}
@@ -213,9 +215,9 @@ export function EditEntryScreen({ navigation, route }: Props) {
             </Pressable>
           ))}
         </View>
-        <View style={styles.row}>
+        <View style={[styles.row, rtl && styles.rowRtl]}>
           <TextInput
-            style={[styles.input, styles.flex]}
+            style={[styles.input, styles.flex, rtl && styles.inputRtl]}
             value={storeDraft}
             onChangeText={setStoreDraft}
             placeholder={t('acceptingPlaceholder')}
@@ -226,16 +228,16 @@ export function EditEntryScreen({ navigation, route }: Props) {
           </Pressable>
         </View>
 
-        <Text style={styles.label}>{t('codeNote')}</Text>
+        <Text style={[styles.label, rtl && styles.textRtl]}>{t('codeNote')}</Text>
         <TextInput
-          style={[styles.input, styles.multiline]}
+          style={[styles.input, styles.multiline, rtl && styles.inputRtl]}
           value={codeNote}
           onChangeText={setCodeNote}
           placeholder={t('codeNotePlaceholder')}
           multiline
         />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={[styles.error, rtl && styles.textRtl]}>{error}</Text> : null}
 
         <Pressable
           style={[styles.save, (!canSave || saving) && styles.saveDisabled]}
@@ -260,6 +262,8 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 8, paddingBottom: 40 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 13, color: '#6b7280', marginTop: 8 },
+  textRtl: { textAlign: 'right', writingDirection: 'rtl' },
+  inputRtl: { textAlign: 'right', writingDirection: 'rtl' },
   input: {
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -272,6 +276,7 @@ const styles = StyleSheet.create({
   },
   multiline: { minHeight: 80, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipsRtl: { flexDirection: 'row-reverse' },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -291,6 +296,7 @@ const styles = StyleSheet.create({
   chipText: { color: '#374151', fontSize: 14 },
   chipTextOn: { color: '#fff', fontSize: 14 },
   row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  rowRtl: { flexDirection: 'row-reverse' },
   addStore: {
     width: 44,
     height: 44,

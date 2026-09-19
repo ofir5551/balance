@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   View,
+  I18nManager,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -15,16 +16,29 @@ import { deleteEntry, getEntry, listSpendEvents, recordSpend } from '../db/repos
 import type { BalanceEntry, SpendEvent } from '../models/types';
 import { formatMoney } from '../components/format';
 import { formatExpiryDate } from '../components/expiry';
-import { t } from '../i18n';
+import { isRtl, t } from '../i18n';
 import type { RootStackParamList } from './types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Detail'>;
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({
+  label,
+  value,
+  rtl,
+}: {
+  label: string;
+  value: string;
+  rtl: boolean;
+}) {
+  const align = rtl ? ('right' as const) : ('left' as const);
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
+      <Text style={[styles.label, { textAlign: align, writingDirection: rtl ? 'rtl' : 'ltr' }]}>
+        {label}
+      </Text>
+      <Text style={[styles.value, { textAlign: align, writingDirection: rtl ? 'rtl' : 'ltr' }]}>
+        {value}
+      </Text>
     </View>
   );
 }
@@ -39,6 +53,7 @@ function parseMajorToCents(raw: string): number | null {
 
 export function DetailScreen({ navigation, route }: Props) {
   const { entryId } = route.params;
+  const rtl = isRtl() || I18nManager.isRTL;
   const [entry, setEntry] = useState<BalanceEntry | null>(null);
   const [history, setHistory] = useState<SpendEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,7 +142,8 @@ export function DetailScreen({ navigation, route }: Props) {
       return;
     }
     if (!entry) return;
-    if (entry.balanceCents - cents < 0) {
+    const next = entry.balanceCents - cents;
+    if (next < 0) {
       Alert.alert(t('overspendTitle'), t('overspendBody'), [
         { text: t('cancel'), style: 'cancel' },
         {
@@ -200,35 +216,35 @@ export function DetailScreen({ navigation, route }: Props) {
       keyboardShouldPersistTaps="handled"
     >
       <Text
-        style={[styles.balance, negative && styles.balanceNeg]}
+        style={[styles.balance, negative && styles.balanceNeg, rtl && styles.textRtl]}
         accessibilityLabel={`${t('balance')} ${formatMoney(entry.balanceCents, entry.currency)}`}
       >
         {formatMoney(entry.balanceCents, entry.currency)}
       </Text>
-      <Text style={styles.merchant}>{entry.merchant}</Text>
+      <Text style={[styles.merchant, rtl && styles.textRtl]}>{entry.merchant}</Text>
 
       <View style={styles.card}>
-        <Field label={t('type')} value={t(`types.${entry.type}`)} />
-        <Field label={t('currency')} value={entry.currency} />
-        <Field label={t('expiry')} value={expiryDisplay} />
-        <Field label={t('accepting')} value={accepting} />
-        <Field label={t('codeNote')} value={entry.codeNote ?? t('none')} />
+        <Field rtl={rtl} label={t('type')} value={t(`types.${entry.type}`)} />
+        <Field rtl={rtl} label={t('currency')} value={entry.currency} />
+        <Field rtl={rtl} label={t('expiry')} value={expiryDisplay} />
+        <Field rtl={rtl} label={t('accepting')} value={accepting} />
+        <Field rtl={rtl} label={t('codeNote')} value={entry.codeNote ?? t('none')} />
       </View>
 
       <View style={styles.spendCard}>
-        <Text style={styles.section}>{t('spend')}</Text>
-        <Text style={styles.label}>{t('spendAmount')}</Text>
+        <Text style={[styles.section, rtl && styles.textRtl]}>{t('spend')}</Text>
+        <Text style={[styles.label, rtl && styles.textRtl]}>{t('spendAmount')}</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, rtl && styles.inputRtl]}
           value={amount}
           onChangeText={setAmount}
           placeholder={t('spendPlaceholder')}
           keyboardType="decimal-pad"
           accessibilityLabel={t('spendAmount')}
         />
-        <Text style={styles.label}>{t('spendNote')}</Text>
+        <Text style={[styles.label, rtl && styles.textRtl]}>{t('spendNote')}</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, rtl && styles.inputRtl]}
           value={note}
           onChangeText={setNote}
           placeholder={t('spendNotePlaceholder')}
@@ -249,7 +265,7 @@ export function DetailScreen({ navigation, route }: Props) {
         </Pressable>
       </View>
 
-      <Text style={styles.section}>{t('history')}</Text>
+      <Text style={[styles.section, rtl && styles.textRtl]}>{t('history')}</Text>
       {history.length === 0 ? (
         <Text style={styles.muted}>{t('noHistory')}</Text>
       ) : (
@@ -289,6 +305,7 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 8,
   },
+  textRtl: { textAlign: 'right', writingDirection: 'rtl' },
   balance: { fontSize: 32, fontWeight: '700', color: '#111827' },
   balanceNeg: { color: '#dc2626' },
   merchant: { fontSize: 18, fontWeight: '600', color: '#374151', marginBottom: 8 },
@@ -308,6 +325,7 @@ const styles = StyleSheet.create({
   },
   field: { gap: 2 },
   label: { fontSize: 12, color: '#6b7280' },
+  inputRtl: { textAlign: 'right', writingDirection: 'rtl' },
   value: { fontSize: 15, color: '#111827' },
   input: {
     borderWidth: 1,
