@@ -5,10 +5,11 @@ const i18n = new I18n({
   en: {
     title: 'Balance',
     subtitle: 'Gift cards & store credit',
-    empty: 'No entries yet',
-    emptyHint: 'Add one in the next build (ME-4).',
+    empty: 'Nothing here yet',
+    emptyHint: 'Your gift cards and store credit will show up here.',
     loading: 'Loading…',
-    dbError: 'Could not open the database',
+    dbError: 'Could not load your balances',
+    retry: 'Retry',
     detail: 'Details',
     history: 'Spend history',
     noHistory: 'No spends yet',
@@ -21,6 +22,22 @@ const i18n = new I18n({
     codeNote: 'Code / note',
     none: '—',
     override: 'override',
+    soonExpiring: 'Expires soon',
+    expired: 'Expired',
+    add: 'Add',
+    edit: 'Edit',
+    delete: 'Delete',
+    save: 'Save',
+    cancel: 'Cancel',
+    createTitle: 'New entry',
+    editTitle: 'Edit entry',
+    required: 'Required',
+    deleteConfirmTitle: 'Delete entry?',
+    deleteConfirmBody: 'This removes the entry and its spend history.',
+    acceptingPlaceholder: 'Add store',
+    codeNotePlaceholder: 'Code or note',
+    merchantPlaceholder: 'Merchant name',
+    balancePlaceholder: '0.00',
     types: {
       gift_card: 'Gift card',
       store_credit: 'Store credit',
@@ -31,10 +48,11 @@ const i18n = new I18n({
   he: {
     title: 'Balance',
     subtitle: 'כרטיסי מתנה וזיכוי חנות',
-    empty: 'אין רשומות עדיין',
-    emptyHint: 'הוספה תגיע ב־ME-4.',
+    empty: 'עדיין אין כאן כלום',
+    emptyHint: 'כרטיסי המתנה וזיכויי החנות יופיעו כאן.',
     loading: 'טוען…',
-    dbError: 'לא ניתן לפתוח את מסד הנתונים',
+    dbError: 'לא ניתן לטעון את היתרות',
+    retry: 'נסה שוב',
     detail: 'פרטים',
     history: 'היסטוריית מימוש',
     noHistory: 'אין מימושים עדיין',
@@ -47,6 +65,22 @@ const i18n = new I18n({
     codeNote: 'קוד / הערה',
     none: '—',
     override: 'חריגה',
+    soonExpiring: 'פג תוקף בקרוב',
+    expired: 'פג תוקף',
+    add: 'הוסף',
+    edit: 'עריכה',
+    delete: 'מחיקה',
+    save: 'שמירה',
+    cancel: 'ביטול',
+    createTitle: 'רשומה חדשה',
+    editTitle: 'עריכת רשומה',
+    required: 'חובה',
+    deleteConfirmTitle: 'למחוק רשומה?',
+    deleteConfirmBody: 'פעולה זו תמחק את הרשומה ואת היסטוריית המימוש.',
+    acceptingPlaceholder: 'הוסף חנות',
+    codeNotePlaceholder: 'קוד או הערה',
+    merchantPlaceholder: 'שם בית העסק',
+    balancePlaceholder: '0.00',
     types: {
       gift_card: 'כרטיס מתנה',
       store_credit: 'זיכוי חנות',
@@ -65,4 +99,8 @@ export default i18n;
 
 export function t(key: string, options?: Record<string, unknown>): string {
   return i18n.t(key, options);
+}
+
+export function isRtl(): boolean {
+  return i18n.locale === 'he';
 }
