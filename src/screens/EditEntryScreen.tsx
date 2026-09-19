@@ -264,7 +264,7 @@ export function EditEntryScreen({ navigation, route }: Props) {
               <Pressable
                 key={p.id}
                 onPress={() => onPresetPress(p.id)}
-                style={[styles.expiryChip, selected && styles.expiryChipOn]}
+                style={[styles.chip, selected && styles.chipOn]}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
               >
@@ -400,22 +400,6 @@ const styles = StyleSheet.create({
     minHeight: 36,
     justifyContent: 'center',
   },
-  expiryChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  expiryChipOn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#111827',
-    minHeight: 44,
-    justifyContent: 'center',
-  },
   chipOn: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -475,7 +459,7 @@ const styles = StyleSheet.create({
   addStoreText: { color: '#fff', fontSize: 22, fontWeight: '600' },
   save: {
     marginTop: 16,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#111827',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
