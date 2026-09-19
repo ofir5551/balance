@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { DetailScreen } from './src/screens/DetailScreen';
+import { EditEntryScreen } from './src/screens/EditEntryScreen';
 import type { RootStackParamList } from './src/screens/types';
 import { t } from './src/i18n';
 
@@ -23,6 +24,7 @@ export default function App() {
           component={DetailScreen}
           options={{ title: t('detail') }}
         />
+        <Stack.Screen name="EditEntry" component={EditEntryScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
