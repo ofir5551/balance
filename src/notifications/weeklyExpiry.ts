@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { SOON_EXPIRING_DAYS } from '../constants';
 import { listExpiringOnOrBefore } from '../db/repository';
 import { t } from '../i18n';
@@ -14,34 +14,16 @@ const SUNDAY = 1;
 const HOUR_LOCAL = 18;
 const MINUTE_LOCAL = 0;
 
+/** Expo Go — Android push APIs removed in SDK 53; loading the module can crash. */
+function isExpoGo(): boolean {
+  return Constants.appOwnership === 'expo';
+}
+
 function horizonIsoDate(daysAhead: number): string {
   const now = new Date();
   const utc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   utc.setUTCDate(utc.getUTCDate() + daysAhead);
   return utc.toISOString().slice(0, 10);
-}
-
-async function ensurePermissions(): Promise<boolean> {
-  const current = await Notifications.getPermissionsAsync();
-  if (current.granted || current.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) {
-    return true;
-  }
-  if (!current.canAskAgain && current.status === 'denied') {
-    return false;
-  }
-  const requested = await Notifications.requestPermissionsAsync();
-  return (
-    requested.granted ||
-    requested.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
-  );
-}
-
-async function ensureAndroidChannel(): Promise<void> {
-  if (Platform.OS !== 'android') return;
-  await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
-    name: t('notifChannelName'),
-    importance: Notifications.AndroidImportance.DEFAULT,
-  });
 }
 
 function buildBody(count: number): string {
@@ -54,13 +36,41 @@ function buildBody(count: number): string {
 /**
  * ME-6: request permission (graceful deny), set Android channel, cancel prior
  * weekly schedule, and schedule Sunday 18:00 device-local with a fresh body.
+ *
+ * Expo Go on Android (SDK 53+): no-op — do not import/call expo-notifications
+ * (push token listeners crash). Use a development / EAS build for Android
+ * weekly reminders. iOS Expo Go still schedules local notifications.
  */
 export async function scheduleWeeklyExpiryReminder(): Promise<void> {
   try {
-    const allowed = await ensurePermissions();
+    if (isExpoGo() && Platform.OS === 'android') {
+      return;
+    }
+
+    // Dynamic import so Android Expo Go never loads the notifications module.
+    const Notifications = await import('expo-notifications');
+
+    const current = await Notifications.getPermissionsAsync();
+    let allowed =
+      current.granted ||
+      current.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+    if (!allowed) {
+      if (!current.canAskAgain && current.status === 'denied') {
+        return;
+      }
+      const requested = await Notifications.requestPermissionsAsync();
+      allowed =
+        requested.granted ||
+        requested.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+    }
     if (!allowed) return;
 
-    await ensureAndroidChannel();
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
+        name: t('notifChannelName'),
+        importance: Notifications.AndroidImportance.DEFAULT,
+      });
+    }
 
     const horizon = horizonIsoDate(SOON_EXPIRING_DAYS);
     const soonOrExpired = await listExpiringOnOrBefore(horizon);
