@@ -12,7 +12,7 @@ import {
   I18nManager,
 } from 'react-native';
 import DateTimePicker, {
-  type DateTimePickerEvent,
+  type DateTimePickerChangeEvent,
 } from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { formatExpiryDate } from '../components/expiry';
@@ -130,15 +130,17 @@ export function EditEntryScreen({ navigation, route }: Props) {
     setShowPicker(false);
   };
 
-  const onPickerChange = (event: DateTimePickerEvent, date?: Date) => {
+  const onPickerValueChange = (_event: DateTimePickerChangeEvent, date: Date) => {
     if (Platform.OS === 'android') {
-      setShowPicker(false);
-      if (event.type === 'dismissed' || !date) return;
       confirmPicker(date);
       return;
     }
     // iOS: spin updates draft; confirm via Done
-    if (date) setPickerDraft(date);
+    setPickerDraft(date);
+  };
+
+  const onPickerDismiss = () => {
+    setShowPicker(false);
   };
 
   const onSave = useCallback(async () => {
@@ -195,13 +197,15 @@ export function EditEntryScreen({ navigation, route }: Props) {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      // Android: softwareKeyboardLayoutMode=resize already shrinks the window;
+      // KAV behavior=height fights that. iOS still needs padding.
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
+        keyboardDismissMode="none"
       >
         <Text style={[styles.label, rtl && styles.textRtl]}>{t('type')}</Text>
         <View style={[styles.chips, rtl && styles.chipsRtl]}>
@@ -292,7 +296,8 @@ export function EditEntryScreen({ navigation, route }: Props) {
               value={pickerDraft}
               mode="date"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={onPickerChange}
+              onValueChange={onPickerValueChange}
+              onDismiss={onPickerDismiss}
             />
             {Platform.OS === 'ios' ? (
               <View style={[styles.pickerActions, rtl && styles.rowRtl]}>
