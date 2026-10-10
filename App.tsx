@@ -72,7 +72,10 @@ function AppNavigator() {
   }
 
   return (
-    <NavigationContainer theme={navTheme} key={language}>
+    // No `key={language}`: remounting the container would drop the back stack
+    // (ME-12 D1). Titles below re-evaluate t() because this component reads
+    // `language` from settings context and re-renders on change.
+    <NavigationContainer theme={navTheme}>
       <StatusBar style={colors.statusBar} />
       <Stack.Navigator
         screenOptions={{
